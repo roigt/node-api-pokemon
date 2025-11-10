@@ -1,0 +1,115 @@
+
+//creer middleware
+
+
+// app.use((req, res,next) =>{
+//     console.log(`URL: ${req.url}`);
+//     next();
+// });
+
+
+
+//connexion a base de donnees a mariadb via sequelize
+const { Sequelize, DataTypes } = require('sequelize');
+const sequelize = new Sequelize(
+    'pokedex', //nom de la base de donnees
+    'root', //utilisateur
+    '', //mot de passe
+    {
+        host: 'localhost',
+        dialect: 'mariadb',
+        dialectOptions: {
+          timezone: 'Etc/GMT-2'
+        },
+        logging: false,
+        // storage: 'path/to/database.sqlite'
+    }
+    
+  )
+  
+ sequelize.authenticate()
+  .then(_ => console.log('La connexion a la base de donnees a bien été etablie'))
+  .catch(error => console.error(`impossible de se connecter a la base de donnees ${error}`))
+  
+
+//fin connexion a base de donnees a mariadb via sequelize
+//Model sequelize debut
+const PokemonModel = require('./src/models/pokemon');
+const Pokemon = PokemonModel(sequelize,DataTypes);
+
+sequelize.sync({force: true})
+  .then(_=>{
+  console.log('La base de donnees "Pokedex" a bien ete synchronise')
+  
+  pokemons.map(pokemon =>{
+    Pokemon.create({
+        name:pokemon.name,
+        hp:pokemon.hp,
+        cp:pokemon.cp,
+        picture:pokemon.picture,
+        types:pokemon.types.join(),
+    
+      }).then(bulbizzare => console.log(bulbizzare.toJSON()))
+  })
+  
+});
+
+//fin model sequelize
+
+
+
+const {success,getUniqueId}= require('./helper.js');
+
+let pokemons = require('./src/db/mock-pokemon');
+
+
+
+
+app.get('/', (req, res) => res.end("hello, Express ici je suis la!"));
+app.get('/api/pokemons/:id', (req, res) => {
+    const id =parseInt(req.params.id) ;
+    const pokemon = pokemons.find(pokemon=> pokemon.id === id);
+    const message = 'Un pokemon a bien été trouvé';
+    // res.send(`vous avez demande le pokemon: ${pokemon.name}`);
+    res.json(success(message,pokemon));
+});
+
+
+app.get('/api/pokemons/', (req, res) => {
+    
+   message = 'La liste des pokemons a ete bien trouvée';
+   res.json(success(message,pokemons));
+    // res.send(`Il y a  ${pokemons.length} pokemons dans le pokedex pour le moment`);
+});
+
+
+//ajouter un pokemon
+app.post('/api/pokemons',(req, res) => {
+    const id = getUniqueId(pokemons); 
+    const pokemonCreated ={...req.body, ...{id:id,created:new Date()}};
+    pokemons.push(pokemonCreated);
+    const message =`Le pokemon ${pokemonCreated.name} a bien ete crée`;
+    res.json(success(message,pokemonCreated));
+})
+
+//modification d un pokemon
+app.put('/api/pokemons/:id',(req, res) => {
+    const id = parseInt(req.params.id);
+    const pokemonUpdated ={...req.body,id:id};
+    pokemons =pokemons.map(pokemon=>{
+        return pokemon.id == id ? pokemonUpdated:pokemon;
+    })
+    
+    const message = `Le pokemon ${pokemonUpdated.name} a bien ete modifié`;
+    res.json(success(message,pokemonUpdated));
+})
+
+//supprimer un pokemon
+app.delete('/api/pokemons/:id',(req,res) => {
+ const id = parseInt(req.params.id);
+ const pokemonDeleted =pokemons.find(pokemon=>pokemon.id == id)
+ pokemons=pokemons.filter(pokemon => pokemon.id !=id)
+ const message = `Le pokemon ${pokemonDeleted.name} a bien ete supprimé`;
+ res.json(success(message,pokemonDeleted));
+
+})  
